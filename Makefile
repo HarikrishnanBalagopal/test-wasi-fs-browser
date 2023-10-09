@@ -2,16 +2,19 @@ BIN_DIR=bin
 BIN_PATH=${BIN_DIR}/test
 WASM_BIN_PATH=${BIN_DIR}/test.wasm
 WAT_PATH=${BIN_DIR}/test.wat
+GO_DEV_V1_22=/Users/haribala/Documents/code/remote/go.googlesource.com/go/bin/go
 
 .PHONY: build
 build:
 	go build -o ${BIN_PATH} .
+	# ${GO_DEV_V1_22} build -o ${BIN_PATH} .
 	# tinygo build -o ${BIN_PATH} .
 
 .PHONY: build-wasm
 build-wasm:
-	# CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm go build -o ${WASM_BIN_PATH} .
-	CGO_ENABLED=0 tinygo build -o ${WASM_BIN_PATH} -target=wasi .
+	CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm go build -o ${WASM_BIN_PATH} .
+	# CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm ${GO_DEV_V1_22} build -o ${WASM_BIN_PATH} .
+	# CGO_ENABLED=0 tinygo build -o ${WASM_BIN_PATH} -target=wasi .
 
 .PHONY: run
 run:
@@ -30,6 +33,7 @@ clean:
 .PHONY: copy
 copy:
 	cp ${WASM_BIN_PATH} public/assets/wasm/test.wasm
+	cp ${WASM_BIN_PATH} public/dist/test.wasm
 
 .PHONY: disassemble
 disassemble:

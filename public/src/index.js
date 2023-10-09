@@ -4,9 +4,10 @@ import { WASI, Fd, File, OpenFile, PreopenDirectory } from "@bjorn3/browser_wasi
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
-const poll_oneoff = (in_, out, nsubscriptions) => {
+// https://wasix.org/docs/api-reference/wasi/poll_oneoff
+const poll_oneoff = (in_, out, nsubscriptions, nevents) => {
     // throw "my simple: async io not supported";
-    console.log('poll_oneoff in_, out, nsubscriptions', in_, out, nsubscriptions);
+    console.log('poll_oneoff in_, out, nsubscriptions, nevents', in_, out, nsubscriptions, nevents);
     return 0;
 };
 
@@ -56,7 +57,10 @@ const main = async () => {
     }
 
     const args = ["bin", "arg1", "arg2"];
-    const env = ["FOO=bar"];
+    const env = ["FOO=bar", "MYPWD=/"];
+    // const env = ["FOO=bar", "PWD=/", "MYPWD=/"];
+    // const env = ["FOO=bar", "PWD=.", "MYPWD=."];
+    // const env = ["FOO=bar", "PWD=app", "MYPWD=app"];
     const fds = [
         // new OpenFile(new File([])), // stdin
         // new OpenFile(new File([])), // stdout
@@ -64,7 +68,7 @@ const main = async () => {
         new XtermStdio(term), // stdin
         new XtermStdio(term), // stdout
         new XtermStdio(term), // stderr
-        new PreopenDirectory(".", {
+        new PreopenDirectory("/", {
             "example.c": new File(encoder.encode(`#include "a"`)),
             "hello.rs": new File(encoder.encode(`fn main() { println!("Hello World!"); }`)),
             "dep.json": new File(encoder.encode(`{"a": 42, "b": 12}`)),
@@ -76,6 +80,26 @@ const main = async () => {
         "wasi_snapshot_preview1": wasi.wasiImport,
     };
     importObject.wasi_snapshot_preview1['poll_oneoff'] = poll_oneoff;
+    console.log('importObject.wasi_snapshot_preview1', importObject.wasi_snapshot_preview1);
+    const all_wasi_host_func_names = Object.keys(importObject.wasi_snapshot_preview1);
+    console.log('all_wasi_host_func_names', all_wasi_host_func_names);
+    all_wasi_host_func_names.forEach(k => {
+        const orig = importObject.wasi_snapshot_preview1[k];
+        importObject.wasi_snapshot_preview1[k] = (...args) => {
+            // https://wasix.org/docs/api-reference/wasi/path_open
+            // dirfd dirflags path path_len o_flags fs_rights_base fs_rights_inheriting fs_flags fd
+            // proxy for path_open !! -1 1 21021328 8 0 267910846n 268435455n 0 21281856
+            // proxy for path_open !! -1 1 21021328 8 0 267910846n 268435455n 0 21281856
+            // proxy for path_open !! -1 1 21021328 8 0 267910846n 268435455n 0 21281856
+            // proxy for path_open !! -1 1 21021328 8 0 267910846n 268435455n 0 21281872
+            // proxy for path_open !! -1 1 21021328 8 0 267910846n 268435455n 0 21281856
+            // TinyGo
+            // proxy for path_open !! 3 1 151536 10 0 0n 0n 0 133972
+            // proxy for path_open !! 3 1 151536 8 0 0n 0n 0 133972
+            console.log('proxy for', k, '!!', ...args);
+            return orig(...args);
+        };
+    });
     const wasmUrl = '/test.wasm';
     const wasmModule = await WebAssembly.instantiateStreaming(fetch(wasmUrl), importObject);
     console.log(wasmModule);
